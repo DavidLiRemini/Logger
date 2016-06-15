@@ -342,6 +342,11 @@ namespace Logger_nsp
 			{
 				baseFileName = name;
 			}
+			//***********************************
+			// @Method:	RollFile
+			// @Returns:	void
+			// @Brief:	文件自滚动
+			//***********************************
 			void RollFile()
 			{
 				util->SwitchFileHandler();
@@ -431,7 +436,7 @@ namespace Logger_nsp
 			//************************************
 			void StopCounter();
 			
-			//void RollFile();
+		
 		};
 	}
 }
