@@ -17,6 +17,7 @@ namespace Logger_nsp
 			auto result = fileName.find('/');
 			assert(result == std::string::npos);
 			fp = ::fopen(fileName.c_str(), "a");
+			fileHandler.push_back(fp);
 			assert(fp);
 			memset(buffer, 0, sizeof(buffer));
 			memset(submitBuffer, 0, sizeof(submitBuffer));
@@ -76,9 +77,9 @@ namespace Logger_nsp
 			return num;
 		}
 
-		FileUtil::uchar* FileUtil::GetSubmitBuffer()const
+		char* FileUtil::GetSubmitBuffer()const
 		{
-			return (uchar*)submitBufferPtr;
+			return (char*)submitBufferPtr;
 		}
 
 		char* FileUtil::GetOriginBuffer()const
@@ -165,18 +166,30 @@ namespace Logger_nsp
 			//std::lock_guard<std::mutex>lk(lockMutex);
 			printf("创建新文件中\n");
 			//printf("fp: 0x%x %d %s\n", fp, __LINE__, __FILE__);
-			::fclose(fp);
-			int err = ferror(fp);
-			if (err)
-			{
-				fprintf(stderr, "Close previous file failed %s\n", strerror(err));
-			}
-			fp = nullptr;
-			fp = ::fopen(fileName.c_str(), "a");
-			err = ferror(fp);
+			// ::fclose(fp);
+			// int err = ferror(fp);
+			// if (err)
+			// {
+				// fprintf(stderr, "Close previous file failed %s\n", strerror(err));
+			// }
+			
+			FILE* fd = ::fopen(fileName.c_str(), "a");
+			err = ferror(fd);
 			if (err)
 			{
 				fprintf(stderr, "Open file failed %s\n", strerror(err));
+			}
+			fileHandler.push_back(fd);
+		}
+		
+		void FileUtil::SwitchFileHandler()
+		{
+			assert(fp != nullptr);
+			assert(fileHandler.size() > 1);
+			auto index = std::find(fileHandler.begin(), fileHandler.end(), fp);
+			if (index != fileHandler.end())
+			{
+				fp = *(++index);
 			}
 		}
 	}

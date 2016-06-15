@@ -89,13 +89,6 @@
 //		]
 //
 //	<< expr::smessage << expr::format_date_time< boost::posix_time::ptime >("TimeStamp", "%Y-%m-%d %H:%M:%S");*/
-//	/*boost::log::formatter scope_formatter = boost::log::expressions::stream << "[" <<
-//		boost::log::expressions::format_date_time<boost::posix_time::ptime>("TimeStamp", "%Y-%m-%d %H:%M:%S") <<
-//		"] [" << boost::log::expressions::attr<boost::log::attributes::current_process_id::value_type>("ProcessID") <<
-//		"-" << boost::log::expressions::attr<boost::log::attributes::current_thread_id::value_type>("ThreadID") << "] [" <<
-//		boost::log::expressions::attr<boost::log::trivial::severity_level>("Severity") <<
-//		"] " << boost::log::expressions::format_named_scope("Scope", boost::log::keywords::format = "%c[%F:%l] ",
-//			boost::log::keywords::depth = 1) << boost::log::expressions::smessage;*/
 //
 //	logging::formatter fmt2 = expr::stream
 //		<< std::setw(6) << std::setfill('0') << line_id << std::setfill(' ')
@@ -213,19 +206,6 @@
 //	}
 //}
 
-//class Clock {
-//public:
-//	typedef an arithmetic - like type        rep;
-//	typedef an instantiation of ratio      period;
-//	typedef boost::chrono::duration<rep, period> duration;
-//	typedef boost::chrono::time_point<Clock>     time_point;
-//	static constexpr bool is_steady = true or false;
-//
-//	static time_point now();
-//};
-
-#define PRINT(X)\
-	printf("Line: %d File: %s\n", __LINE__, __FILE__);
 struct Time_val
 {
 	time_t seconds;
@@ -316,7 +296,7 @@ int main(int, char*[])
 	stream.str("");
 	stream << "this";
 	auto s = stream.str();*/
-	LOG_INFO << "Log Test beginning \n";
+	LOG_INFO << "Log 测试开始 \n";
 	for (int i = 0; i <500; i++)
 	{
 		//LogErrorTest();
@@ -339,7 +319,7 @@ int main(int, char*[])
 		LogFatalTest();
 	}
 
-	LOG_INFO << "Log Test end\n";
+	LOG_INFO << "Log 测试结束\n";
 	//LOG_TRACE << "Log trace Test!\n";
 
 	//LOG_FATAL << "start logging\n";

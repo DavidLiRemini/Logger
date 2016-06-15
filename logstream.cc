@@ -202,7 +202,7 @@ namespace Logger_nsp
 
 					if (lenth >= 65536)
 					{
-						lenth = 65472;
+						lenth = buffer.GetUtil()->AvailSubmitBuffer() - 64;
 					}
 					index += lenth;
 					//printf("util.fp 0x%x %d %s\n", buffer.GetUtil()->getfp(), __LINE__, __FILE__);
@@ -233,6 +233,9 @@ namespace Logger_nsp
 							buffer.SetSubmitIndex(0);
 							buffer.SetLastBufferLength(-1);
 							buffer.Bzero();
+							
+							printf("全部提交完成，切换文件句柄\n");
+							buffer.RollFile();
 						}
 					}
 					else
@@ -270,7 +273,7 @@ namespace Logger_nsp
 		LogStream::~LogStream()
 		{
 			printf("LogStream 析构\n");
-			std::this_thread::sleep_for(std::chrono::seconds(8));
+			std::this_thread::sleep_for(std::chrono::seconds(6));
 			StopCounter();
 			/*if (util != nullptr)
 			{

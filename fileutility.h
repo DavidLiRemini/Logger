@@ -7,6 +7,7 @@
 #include <vector>
 #include <condition_variable>
 #include <atomic>
+#include <list>
 #include <thread>
 
 namespace Logger_nsp
@@ -29,6 +30,7 @@ namespace Logger_nsp
 			char buffer[64 * 1024];
 			char submitBuffer[64 * 1024];
 			char* submitBufferPtr;
+			std::list<FILE*>fileHandler;
 			FILE* fp;
 			size_t Write(const char* src, size_t len);
 		public:
@@ -67,7 +69,7 @@ namespace Logger_nsp
 			// @Returns:   uchar*
 			// @Brief:	已提交缓冲区所指地址
 			//************************************
-			uchar* GetSubmitBuffer()const;
+			char* GetSubmitBuffer()const;
 			//************************************
 			// @Method:    WrittenBytes
 			// @Returns:   size_t
@@ -106,6 +108,12 @@ namespace Logger_nsp
 			// @Brief:	取得原始缓冲区地址
 			//************************************
 			char* GetOriginBuffer()const;
+			//************************************
+			// @Method: SwitthFileHandler
+			// @Returns: void
+			// @Brief: 切换文件句柄
+			//************************************
+			void SwitthFileHandler();
 		};
 
 	}

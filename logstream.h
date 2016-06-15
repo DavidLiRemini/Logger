@@ -14,7 +14,7 @@ namespace Logger_nsp
 		// @Returns:   size_t
 		// @Parameter: buf
 		// @Parameter: value
-		// @Brief:	Efficient way convert unsigned to 'Hex string'
+		// @Brief:	Efficient way convert unsigned to Hex string
 		//************************************
 		size_t ConvertHex(char buf[], uintptr_t value);
 		//************************************
@@ -174,11 +174,13 @@ namespace Logger_nsp
 					{
 						//printf("缓冲区满时已全部提交完成，只需重设下标\n");
 						lastSubmitIndex = 0;
+						printf("切换文件句柄\n");
+						RollFile();
 					}
 				}
 				/**
 				 *
-				 * @Brief: 这里不能在这里判断的原因是，如果主线程需要依靠子线程的更新来进行相应的更改
+				 * 这里不能在这里判断的原因是，如果主线程需要依靠子线程的更新来进行相应的更改
 				 * 而，如果子线程并没有获取时间片，那么后来的append将一直追加到缓冲区中，而因为lastsubmitindex
 				 * 一直没有进行更新，所以这里不会进入if判断句，直到最后一句append结束之后，不在有append来追加数据
 				 * 所以如果此时子线程开始更新数据，那么原缓冲区的内容会被成功的写入，但是后写的数据，因为lastSubmitIndex
@@ -339,6 +341,10 @@ namespace Logger_nsp
 			void SetBaseFileName(std::string name)
 			{
 				baseFileName = name;
+			}
+			void RollFile()
+			{
+				util->SwitchFileHandler();
 			}
 		};
 
