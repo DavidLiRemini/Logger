@@ -189,7 +189,10 @@ namespace Logger_nsp
 			auto index = std::find(fileHandler.begin(), fileHandler.end(), fp);
 			if (index != fileHandler.end())
 			{
-				fp = *(++index);
+				if(*index != fileHandler.back())
+				{
+					fp = *(++index);
+				}
 			}
 		}
 	}
