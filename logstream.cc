@@ -124,7 +124,11 @@ namespace Logger_nsp
 		{
 			char temp[20] = { 0 };
 			std::ostringstream str;
+#if defined(_WIN32) && defined(_MSC_VER) // using windows vc compiler
 			sprintf_s(temp, sizeof(temp), "%.12f", v);
+#elif defined(__GNUC__)	// using GCC compiler
+			snprintf(temp, sizeof(temp), "%.12.f", v);
+#endif
 			str << temp;
 			*this << str.str();
 			

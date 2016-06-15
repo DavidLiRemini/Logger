@@ -42,7 +42,11 @@ namespace Logger_nsp
 			auto msc = (n % 10000000) / 10000;
 			Logger_nsp::details::Convert(tmp, msc);
 			char temp[20] = { 0 };
+#if defined(_WIN32) && defined(_MSC_VER) // using windows vc compiler
 			size_t len = sprintf_s(temp, sizeof(temp), "%s-%s.%03s", prefix.c_str(), suffix.c_str(), tmp);
+#elif defined(__GNUC__)	// using GCC compiler
+			size_t len = snprintf(temp, sizeof(temp), "%s-%s.%03s", prefix.c_str(), suffix.c_str(), tmp);
+#endif
 			assert(len == 18);
 			//printf("%s-%s.%03s\n", prefix.c_str(), suffix.c_str(), tmp);
 			return temp;

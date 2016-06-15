@@ -48,8 +48,13 @@ namespace Logger_nsp
 		unsigned int lineNumber = line;
 		const char* fileName = file;
 		char temp[150] = { 0 };
+#if defined(_WIN32) && defined(__MSC_VER)
 		size_t len = sprintf_s(temp, sizeof(temp), "%-7s %s %-7s Line: %04d File: %-20s ", levelName, timeStr.c_str(), 
 			threadId.c_str(), lineNumber, fileName);
+#elif defined(__GNUC__)
+		size_t len = snprintf(temp, sizeof(temp), "%-7s %s %-7s Line: %04d File: %-20s ", levelName, timeStr.c_str(),
+			threadId.c_str(), lineNumber, fileName);
+#endif
 		if (stream)
 		{
 			(*stream) << temp;
