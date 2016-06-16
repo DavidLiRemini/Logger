@@ -30,7 +30,7 @@ namespace Logger_nsp
 		if (stream == nullptr)
 		{
 			stream = new details::LogStream("TestRollLog");
-			(*stream) << prefix;
+			// (*stream) << prefix;
 		}
 		return stream;
 	}
