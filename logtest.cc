@@ -220,13 +220,13 @@ const char* monthName[12] = {
 
 static Logger_nsp::details::LogStream* stream = Logger_nsp::Logger::GetStream();
 
-//void LogErrorTest()
-//{
-//	for (auto it : monthName)
-//	{
-//		LOG_ERROR << "month Name " << it << "\n";
-//	}
-//}
+void LogErrorTest()
+{
+	for (auto it : monthName)
+	{
+		LOG_ERROR << "month Name " << it << "\n";
+	}
+}
 void LogTraceTest()
 {
 	int i = 19;
@@ -267,6 +267,11 @@ void LogFatalTest()
 		LOG_FATAL << "Month Name " << t << " address " << &t << "\n";
 	}
 }
+int Release()
+{
+	delete ::stream;
+	return 0;
+}
 int main(int, char*[])
 {
 	/*std::ofstream filestr("test");
@@ -299,7 +304,7 @@ int main(int, char*[])
 	LOG_INFO << "Log 测试开始 \n";
 	for (int i = 0; i <500; i++)
 	{
-		//LogErrorTest();
+		LogErrorTest();
 		double db = 6.589;
 		LOG_DEBUG << "db is: " << db << "\n";
 		float fx = 10.6f;
@@ -309,7 +314,7 @@ int main(int, char*[])
 		LogDebugTest();
 		LogWarningTest();
 		LogFatalTest();
-		//printf("Log 次数: %d\n", i);
+		printf("Log 次数: %d\n", i);
 		//Sleep(1000);
 	}
 
@@ -362,7 +367,7 @@ int main(int, char*[])
 	//	Sleep(1000);
 	//}
 	//return 0;
-	delete ::stream;
+	onexit(Release);
 	/*int z;
 	std::cin >> z;*/
 }
