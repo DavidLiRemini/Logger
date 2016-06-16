@@ -59,15 +59,15 @@ namespace Logger_nsp
 			 *
 			 * @Brief:	内部缓冲结构
 			 */
-		struct InternalBuf
+			struct InternalBuf
 			{
+			public:
 				InternalBuf* prev;
 				InternalBuf* next;
 				InternalBuf()
 					:prev(nullptr),
 					next(nullptr)
-				{
-				}
+				{}
 				virtual ~InternalBuf(){}
 			};
 
@@ -95,7 +95,7 @@ namespace Logger_nsp
 			template <int SZ>
 			friend char* GetActualTypeDataSource(typename FixBuffer<SZ>::InternalBuf* ptr);
 			//
-	private:
+		private:
 			std::string baseFileName;
 			InternalBuf* currentBufPtr;
 			SmallInternalBuf firstBuffer;
