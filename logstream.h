@@ -3,6 +3,16 @@
 #include "fileutility.h"
 #include <string.h>
 #include <string>
+#define CC_DYNAMIC_CONVERSION(x)\
+	char* address = nullptr;\
+	if (dynamic_cast<SmallInternalBuf*>(x))\
+	{\
+		address = dynamic_cast<SmallInternalBuf*>(x)->data;\
+	}\
+	else\
+	{\
+		address = dynamic_cast<LargeInternalBuf*>(x)->data;\
+	}
 namespace Logger_nsp
 {
 	namespace details
@@ -26,70 +36,135 @@ namespace Logger_nsp
 		//************************************
 		template <typename T>
 		size_t Convert(char buf[], T value);
+		template <int SIZE>
+		class FixBuffer;
 
+		template <int SIZE>
+		char* GetActualTypeDataSource(typename FixBuffer<SIZE>::InternalBuf* ptr)
+		{
+			char* retValue = nullptr;
+			if (dynamic_cast<typename FixBuffer<SIZE>::SmallInternalBuf*>(ptr))
+			{
+				retValue = dynamic_cast<typename FixBuffer<SIZE>::SmallInternalBuf*>(ptr)->data;
+			}
+			else
+				retValue = dynamic_cast<typename FixBuffer<SIZE>::LargeInternalBuf*>(ptr)->data;
+			return retValue;
+		}
 		template <int SIZE>
 		class FixBuffer
 		{
 		private:
 			/**
 			 *
-			 * @Brief:	内部双缓冲结构
+			 * @Brief:	内部缓冲结构
 			 */
-			struct InternalBuf
+		struct InternalBuf
 			{
-				char* prev;
-				char* next;
-				char data[SIZE];
+				InternalBuf* prev;
+				InternalBuf* next;
 				InternalBuf()
 					:prev(nullptr),
 					next(nullptr)
 				{
-					memset(data, 0, sizeof(data));
+				}
+				virtual ~InternalBuf(){}
+			};
+
+			struct SmallInternalBuf : public InternalBuf
+			{
+			public:
+				char data[SIZE];
+				SmallInternalBuf()
+					:InternalBuf()
+				{
+					memset(data, 0, SIZE);
+				}
+				
+			};
+			struct LargeInternalBuf : public InternalBuf
+			{
+			public:
+				char data[2 * SIZE];
+				LargeInternalBuf()
+					:InternalBuf()
+				{
+					memset(data, 0, 2 * SIZE);
 				}
 			};
+			template <int SZ>
+			friend char* GetActualTypeDataSource(typename FixBuffer<SZ>::InternalBuf* ptr);
 			//
-		private:
-			//char data[SIZE];
+	private:
 			std::string baseFileName;
-			InternalBuf firstBuf;
-			InternalBuf secondBuf;
 			InternalBuf* currentBufPtr;
+			SmallInternalBuf firstBuffer;
+			SmallInternalBuf secondBuffer;
+			LargeInternalBuf backBuf;
 			char* cur;
 			bool hasUnSubmitBuf;
+			bool stillHasUnsubmitBuf = false;
+			bool outOfRange = false;
+			bool switchHandler = false;
 			size_t lastSubmitIndex;
-			int lastBufferLength;
+			int firstBufferLength;
+			int secondBufferLength;
 			void InitBuf()
 			{
-				firstBuf.next = secondBuf.data;
-				firstBuf.prev = secondBuf.data;
+				firstBuffer.next = &secondBuffer;
+				secondBuffer.next = &backBuf;
+				backBuf.next = &firstBuffer;
 
-				secondBuf.prev = firstBuf.data;
-				secondBuf.next = firstBuf.data;
+				backBuf.prev = &secondBuffer;
+				secondBuffer.prev = &firstBuffer;
+				firstBuffer.prev = &backBuf;
 			}
 
+			char* ConvertToActualTypeAndGetSource()const
+			{
+				char* retValue = nullptr;
+				if (dynamic_cast<SmallInternalBuf*>(currentBufPtr))
+				{
+					retValue = dynamic_cast<SmallInternalBuf*>(currentBufPtr)->data;
+				}
+				else
+					retValue = dynamic_cast<LargeInternalBuf*>(currentBufPtr)->data;
+				return retValue;
+
+			}
 			char* end()const
 			{
-				return const_cast<char*>(currentBufPtr->data + SIZE);
+				CC_DYNAMIC_CONVERSION(currentBufPtr);
+				if (address == backBuf.data)
+				{
+					return const_cast<char*>(address + 2 * SIZE);
+				}
+				else
+					return const_cast<char*>(address + SIZE);
+			}
+
+			void SetRollHandlerOrNot(bool state)
+			{
+				switchHandler = state;
 			}
 		private:
-			/*static std::atomic<bool> inProgress;
-			static std::atomic<short>atomicCounter;*/
 			static std::atomic<short>atomicCounter;
 			FileUtility::FileUtil* util;
 			std::mutex lockMutex;
-			//std::atomic<bool> finished = false;
-			//std::thread counter;
 		public:
 			FixBuffer()
 				:currentBufPtr(nullptr),
 				cur(nullptr),
 				hasUnSubmitBuf(false),
-				lastBufferLength(-1),
+				stillHasUnsubmitBuf(false),
+				outOfRange(false),
+				switchHandler(false),
+				firstBufferLength(-1),
+				secondBufferLength(-1),
 				util(nullptr)
 			{
-				//memset(data, 0, SIZE);
-				currentBufPtr = &firstBuf;
-				cur = currentBufPtr->data;
+				currentBufPtr = &firstBuffer;
+				cur = firstBuffer.data;
 				InitBuf();
 			}
 
@@ -117,6 +192,7 @@ namespace Logger_nsp
 				util->Start();
 				//printf("util.fp 0x%x %d %s\n", util->getfp(), __LINE__, __FILE__);
 			}
+			
 			
 			//************************************
 			// @Method:    SetBaseName
@@ -149,19 +225,30 @@ namespace Logger_nsp
 				}
 				else //双缓冲切换
 				{
+					if (lastSubmitIndex != Length() && outOfRange)
+					{
+						printf("缓冲区溢出 Out of Range\n");
+						CC_DYNAMIC_CONVERSION(currentBufPtr);
+						secondBufferLength = cur - address;
+						stillHasUnsubmitBuf = true;
+					}
 					//printf("超过缓冲区，进行交换\n");
-					if (lastSubmitIndex != Length())
+					if (lastSubmitIndex != Length() && !outOfRange)
 					{
 						hasUnSubmitBuf = true;
-						lastBufferLength = Length();
+						outOfRange = true;
+						firstBufferLength = Length();
 					}
-					cur = currentBufPtr->next;
-					if (cur == firstBuf.data)
+					cur = GetActualTypeDataSource<SIZE>(currentBufPtr->next);
+					if (cur == firstBuffer.data)
 					{
-						currentBufPtr = &firstBuf;
+						currentBufPtr = &firstBuffer;
 					}
+					else if (cur == secondBuffer.data)
+						currentBufPtr = &secondBuffer;
 					else
-						currentBufPtr = &secondBuf;
+						currentBufPtr = &backBuf;
+
 					memcpy(cur, buf, len);
 					cur += len;
 					char temp[10] = { 0 };
@@ -169,10 +256,15 @@ namespace Logger_nsp
 					++atomicCounter;
 					std::string fileName = baseFileName + "_" + temp + ".log";
 					//printf("util.fp 0x%x %d %s\n", util->getfp(), __LINE__, __FILE__);
+
 					util->CreateNewLogFile(fileName);
-					if (!hasUnSubmitBuf)
+					/**
+					 *
+					 * 切换时候已经全部刷新过去
+					 */
+					if (!hasUnSubmitBuf && !stillHasUnsubmitBuf)
 					{
-						//printf("缓冲区满时已全部提交完成，只需重设下标\n");
+						printf("缓冲区满时已全部提交完成，只需重设下标\n");
 						lastSubmitIndex = 0;
 						printf("切换文件句柄\n");
 						RollFile();
@@ -180,7 +272,7 @@ namespace Logger_nsp
 				}
 				/**
 				 *
-				 * 这里不能在这里判断的原因是，如果主线程需要依靠子线程的更新来进行相应的更改
+				 * @Brief: 这里不能在这里判断的原因是，如果主线程需要依靠子线程的更新来进行相应的更改
 				 * 而，如果子线程并没有获取时间片，那么后来的append将一直追加到缓冲区中，而因为lastsubmitindex
 				 * 一直没有进行更新，所以这里不会进入if判断句，直到最后一句append结束之后，不在有append来追加数据
 				 * 所以如果此时子线程开始更新数据，那么原缓冲区的内容会被成功的写入，但是后写的数据，因为lastSubmitIndex
@@ -206,6 +298,7 @@ namespace Logger_nsp
 			{
 				memset(currentBufPtr->next, 0, SIZE);
 			}
+			
 			//************************************
 			// @Method:    Has_unSubmitBuf
 			// @Returns:   bool
@@ -213,7 +306,7 @@ namespace Logger_nsp
 			//************************************
 			bool Has_unSubmitBuf()const
 			{
-				return hasUnSubmitBuf;
+				return hasUnSubmitBuf || stillHasUnsubmitBuf;
 			}
 			//************************************
 			// @Method:    SetSubmitIndex
@@ -236,14 +329,24 @@ namespace Logger_nsp
 			}
 
 			//************************************
-			// @Method:    SetLastBufferLength
+			// @Method:    SetFirstBufferLength
 			// @Returns:   void
 			// @Parameter: length
 			// @Brief:	设置上一缓冲区已缓冲数据的总长度
 			//************************************
-			void SetLastBufferLength(int length)
+			void SetFirstBufferLength(int length)
 			{
-				lastBufferLength = length;
+				firstBufferLength = length;
+			}
+			//************************************
+			// @Method:    SetSecondBufferLength
+			// @Returns:   void
+			// @Parameter: length
+			// @Brief:	设置第二个已缓冲满的数据总长度
+			//************************************
+			void SetSecondBufferLength(int length)
+			{
+				secondBufferLength = length;
 			}
 			//************************************
 			// @Method:    Increase
@@ -272,11 +375,17 @@ namespace Logger_nsp
 			size_t Length()const
 			{
 				//printf("在length 函数中 %d\n", lastBufferLength);
-				if (lastBufferLength != -1)
+				if (firstBufferLength != -1)
 				{
-					return lastBufferLength;
+					return firstBufferLength;
 				}
-				return cur - currentBufPtr->data;
+				if (secondBufferLength != -1)
+				{
+					return secondBufferLength;
+				}
+				
+				char* ret = GetActualTypeDataSource<SIZE>(currentBufPtr);
+				return cur - ret;
 			}
 			//************************************
 			// @Method:    GetData
@@ -285,13 +394,61 @@ namespace Logger_nsp
 			//************************************
 			const char* GetData()const
 			{
-				if (hasUnSubmitBuf)
+				if (firstBufferLength == -1 && !hasUnSubmitBuf && !stillHasUnsubmitBuf && !switchHandler)
 				{
-					return currentBufPtr->next;
+					return ConvertToActualTypeAndGetSource();
 				}
-				return currentBufPtr->data;
+				if (secondBufferLength == -1 && !stillHasUnsubmitBuf)
+				{
+					if (hasUnSubmitBuf)
+					{
+						if (currentBufPtr->prev)
+						{
+							char* ret = GetActualTypeDataSource<SIZE>(currentBufPtr->prev);
+							return ret;
+						}
+						return nullptr;
+					}
+					else
+					{
+						char* ret = ConvertToActualTypeAndGetSource();
+						return ret;
+					}
+
+				}
+				else
+				{
+					char* ret = nullptr;
+					if (hasUnSubmitBuf && firstBufferLength != -1 && stillHasUnsubmitBuf && secondBufferLength!= -1)
+					{
+						//return firstBuffer.data;
+						if (currentBufPtr->prev->prev)
+						{
+							ret = GetActualTypeDataSource<SIZE>(currentBufPtr->prev->prev);
+							return ret;
+						}
+					}
+					else if (!hasUnSubmitBuf && firstBufferLength == -1 && stillHasUnsubmitBuf && secondBufferLength != -1)
+					{
+						if (currentBufPtr->prev)
+						{
+							ret = GetActualTypeDataSource<SIZE>(currentBufPtr->prev);
+						}
+						return ret;
+					}
+					else
+					{
+						ret = ConvertToActualTypeAndGetSource();
+						return ret;
+					}
+				}
 			}
-			void Reset() { cur = currentBufPtr->data; }
+			void Reset() 
+			{
+				
+				CC_DYNAMIC_CONVERSION(currentBufPtr);
+				cur = address; 
+			}
 
 			//************************************
 			// @Method:    SetSubmitFinished
@@ -303,6 +460,14 @@ namespace Logger_nsp
 			{
 				hasUnSubmitBuf = state;
 			}
+			void SetifStillHasUnSubmit(bool state)
+			{
+				stillHasUnsubmitBuf = state;
+			}
+			void SetOutofRangeState(bool state)
+			{
+				outOfRange = state;
+			}
 			//************************************
 			// @Method:    AsString
 			// @Returns:   std::string
@@ -310,7 +475,9 @@ namespace Logger_nsp
 			//************************************
 			std::string AsString()const
 			{
-				return std::string(currentBufPtr->data, Length());
+				
+				CC_DYNAMIC_CONVERSION(currentBufPtr);
+				return std::string(address, Length());
 			}
 			//************************************
 			// @Method:    Clear
@@ -319,7 +486,14 @@ namespace Logger_nsp
 			//************************************
 			void Clear()
 			{
-				memset(currentBufPtr->data, 0, SIZE);
+				
+				CC_DYNAMIC_CONVERSION(currentBufPtr);
+				if (address == backBuf.data)
+				{
+					memset(address, 0, 2 * SIZE);
+				}
+				else
+					memset(address, 0, SIZE);
 			}
 			char* Current()const
 			{
@@ -342,26 +516,32 @@ namespace Logger_nsp
 			{
 				baseFileName = name;
 			}
-			//***********************************
-			// @Method:	RollFile
-			// @Returns:	void
-			// @Brief:	文件自滚动
-			//***********************************
+
 			void RollFile()
 			{
 				util->SwitchFileHandler();
+				SetRollHandlerOrNot(true);
+			}
+
+			int GetSecondLengthSize()const
+			{
+				return secondBufferLength;
+			}
+			int GetFirstLengthSize()const
+			{
+				return firstBufferLength;
 			}
 		};
 
 		template <int SIZE>
 		std::atomic<short> FixBuffer<SIZE>::atomicCounter(0);
 
+		
 		class LogStream
 		{
 		private:
 			const int kMaxDigitlen = 32;
 			static std::atomic<bool> inProgress;
-			static std::atomic<short>atomicCounter;
 			typedef details::FixBuffer<details::kLargeBuffer> Buffer;
 			Buffer buffer;
 			//unsigned lastSubmitIndex;
@@ -436,7 +616,7 @@ namespace Logger_nsp
 			//************************************
 			void StopCounter();
 			
-		
+			//void RollFile();
 		};
 	}
 }
