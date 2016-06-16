@@ -131,7 +131,7 @@ namespace Logger_nsp
 					Flush();
 					if (unUsedBytes <= 64)
 					{
-						printf("数据超过65536导致有剩余数据未提交\n");
+						printf("数据超过131072导致有剩余数据未提交\n");
 						printf("written bytes %zd\n", writtenBytes);
 						memset(submitBuffer, 0, sizeof(submitBuffer));
 						submitBufferPtr = submitBuffer;
@@ -157,7 +157,7 @@ namespace Logger_nsp
 		int FileUtil::AvailSubmitBuffer()const
 		{
 			int used = submitBufferPtr - submitBuffer;
-			int avail = 65536 - used;
+			int avail = 131072 - used;
 			return avail;
 		}
 
