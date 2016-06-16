@@ -1,5 +1,6 @@
 #pragma once
 #include "logstream.h"
+
 #include <time.h>
 #include <string>
 #include <chrono>
