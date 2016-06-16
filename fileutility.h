@@ -27,8 +27,8 @@ namespace Logger_nsp
 			size_t writtenBytes;
 			size_t submitSize;
 			size_t unUsedBytes;
-			char buffer[64 * 1024];
-			char submitBuffer[64 * 1024];
+			char buffer[128 * 1024];
+			char submitBuffer[128 * 1024];
 			char* submitBufferPtr;
 			std::list<FILE*>fileHandler;
 			FILE* fp;
