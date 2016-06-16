@@ -1,7 +1,8 @@
+#include "logstream.h"
+
 #include <algorithm>
 #include <assert.h>
 #include <stdio.h>
-#include "logstream.h"
 #include <sstream>
 #include <chrono>
 
