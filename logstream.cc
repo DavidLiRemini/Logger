@@ -196,15 +196,15 @@ namespace Logger_nsp
 			//std::unique_lock<std::mutex>lk(util->GetMutex());
 			std::unique_lock<std::mutex>lk(buffer.GetUtil()->GetMutex());
 			{
-				/*printf("提交数据\n");*/
+				//printf("提交数据\n");
 				size_t index = buffer.GetSubmitIndex();
 				const char* dataSource = buffer.GetData() + index;
 				lenth = buffer.Length() - index;
-				//printf("提交数据长度为 %d\n", lenth);
+				printf("提交数据长度为 %d\n", lenth);
 				if (lenth > 0)
 				{
 
-					if (lenth >= 65536)
+					if (lenth >= 131072)
 					{
 						lenth = buffer.GetUtil()->AvailSubmitBuffer() - 64;
 					}
@@ -223,22 +223,37 @@ namespace Logger_nsp
 					 * 能够写入的时候再进行写入。
 					 */
 					
-					if ((dataDestination + lenth) < (origin + 65536))
+					if ((dataDestination + lenth) < (origin + 131072))
 					{
 						buffer.SetSubmitIndex(index);
 						// lenth + datadestination > 65536;
-						assert((dataDestination + lenth) < ( origin + 65536) &&  "Caution ! Buffer Out of range!");
+						assert((dataDestination + lenth) < ( origin + 131072) &&  "Caution ! Buffer Out of range!");
 						memcpy(dataDestination, dataSource, lenth);
 						*(dataDestination + lenth) = '\0';
 						if (index == buffer.Length() && buffer.Has_unSubmitBuf())
 						{
-							//printf("全部内容已提交\n");
-							buffer.SetSubmitFinished(false);
+							printf("全部内容已提交\n");
+							printf("全部提交时index为 %d\n", index);
+							/************************************************************************/
+							/* 这里可以进行文件句柄切换。                                                                     */
+							/************************************************************************/
+							if (buffer.GetFirstLengthSize() == index)
+							{
+								buffer.SetSubmitFinished(false);
+								buffer.SetFirstBufferLength(-1);
+							}
+							else if (buffer.GetSecondLengthSize() == index)
+							{
+								buffer.SetifStillHasUnSubmit(false);
+								buffer.SetSecondBufferLength(-1);
+								buffer.SetOutofRangeState(false);
+							}
 							buffer.SetSubmitIndex(0);
-							buffer.SetLastBufferLength(-1);
-							buffer.Bzero();
 							
-							printf("全部提交完成，切换文件句柄\n");
+							/************************************************************************/
+							/* 可能会有一个尾巴数据会写到下一个文件当中                                                                     */
+							/************************************************************************/
+							printf("切换文件句柄\n");
 							buffer.RollFile();
 						}
 					}
@@ -266,11 +281,7 @@ namespace Logger_nsp
 		{
 			buffer.SetBaseFileName(fileName);
 			buffer.Start();
-			/*char temp[10] = { 0 };
-			Convert(temp, atomicCounter.operator short());
-			const std::string name = fileName + "_" + temp +".log";*/
-			/*util = new FileUtility::FileUtil(name);
-			util->Start();*/
+		
 			StartCounter();
 		}
 
@@ -279,11 +290,6 @@ namespace Logger_nsp
 			printf("LogStream 析构\n");
 			std::this_thread::sleep_for(std::chrono::seconds(6));
 			StopCounter();
-			/*if (util != nullptr)
-			{
-				delete util;
-				util = nullptr;
-			}*/
 		}
 
 		void LogStream::Tick()
